@@ -62,6 +62,7 @@ class Preprocessor:
 prep = Preprocessor()
 prep.preprocess()
 
+
 class CyrillicMNISTDataset(Dataset):
 
     def __init__(self, is_train=True, transforms=None):
@@ -89,7 +90,7 @@ class CyrillicMNISTDataset(Dataset):
     
 tfs_train = transforms.Compose([
             transforms.Resize((64, 64)),
-            transforms.RandomAffine(8, (0.1, 0.1), (0.5, 1)),
+            transforms.RandomAffine(8, (0.1, 0.1), (0.5, 1), 10),
             # transforms.RandomResizedCrop(size=(8, 8), scale=(0.8, 1.0), antialias=True),
             transforms.ToImage(),
             transforms.ToDtype(torch.float32, scale=True),
@@ -118,15 +119,15 @@ class CyrillicCNN(nn.Module):
         # Block 1
         self.conv1 = nn.Conv2d(in_channels=1,
                                out_channels=32,
-                               kernel_size=3,
-                               padding=2)
+                               kernel_size=7,
+                               padding=3)
         self.bn1 = nn.BatchNorm2d(32)
         self.relu1 = nn.ReLU()
         self.pool1 = nn.MaxPool2d(2, 2) # 96,96 -> 48,48 | 64,64 -> 32,32
         # Block 2
         self.conv2 = nn.Conv2d(in_channels=32,
                                out_channels=64,
-                               kernel_size=3,
+                               kernel_size=5,
                                padding=2)
         self.bn2 = nn.BatchNorm2d(64)
         self.relu2 = nn.ReLU()
@@ -134,8 +135,8 @@ class CyrillicCNN(nn.Module):
         # Block 3
         self.conv3 = nn.Conv2d(in_channels=64,
                                out_channels=128,
-                               kernel_size=3,
-                               padding=1)
+                               kernel_size=5,
+                               padding=2)
         self.bn3 = nn.BatchNorm2d(128)
         self.relu3 = nn.ReLU()
         self.pool3 = nn.MaxPool2d(2, 2) # 24,24 -> 12,12 | 16,16 -> 8,8
@@ -238,14 +239,15 @@ if not model_path.exists():
     plt.subplot(122)
     plt.title("Acc")
     plt.plot(train_acc)
+    plt.savefig('train.png', dpi=300, bbox_inches='tight')
     plt.show()
 else:
     model.load_state_dict(torch.load(model_path))
 
 model.eval()
-it = iter(test_loader)  
+it = iter(test_loader)
 images, labels = next(it)
-image = images[13].unsqueeze(0)
+image = images[10].unsqueeze(0)
 image = image.to(device)
 
 with torch.no_grad():
@@ -253,5 +255,5 @@ with torch.no_grad():
     _, predicted = torch.max(output, 1)
 
 classes = cmd_test.classes
-print(f"True - {classes[labels[14]]}")
+print(f"True - {classes[labels[10]]}")
 print(f"Pred - {classes[predicted.cpu().item()]}")
