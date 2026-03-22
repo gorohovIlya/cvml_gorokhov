@@ -53,7 +53,7 @@ class Preprocessor:
                 os.rename(str(self.orig_path / letter / fts), str(self.test_path / letter / fts))
     
     def preprocess(self):
-        if len(os.listdir(self.test_path)) == 34:
+        if 'test' in os.listdir('./'):
             print("Data is already preprocessed!")
         else:
             self.extract_files_from_zip()
@@ -69,7 +69,6 @@ class CyrillicMNISTDataset(Dataset):
         self.path = Path("./" + ("train" if is_train else "test"))
         self.length = 0
         self.files = []
-        self.targets = torch.eye(len(os.listdir(self.path)))
         self.classes = os.listdir(self.path)
         self.transforms = transforms
         for label in self.classes:
@@ -90,7 +89,7 @@ class CyrillicMNISTDataset(Dataset):
     
 tfs_train = transforms.Compose([
             transforms.Resize((64, 64)),
-            transforms.RandomAffine(8, (0.1, 0.1), (0.5, 1), 10),
+            transforms.RandomAffine(10, (0.1, 0.1), (0.5, 0.9), 10),
             transforms.ToImage(),
             transforms.ToDtype(torch.float32, scale=True),
         ])
@@ -121,38 +120,38 @@ class CyrillicCNN(nn.Module):
                                kernel_size=7,
                                padding=3)
         self.bn1 = nn.BatchNorm2d(32)
-        self.relu1 = nn.ReLU()
-        self.pool1 = nn.MaxPool2d(2, 2) # 96,96 -> 48,48 | 64,64 -> 32,32
+        self.relu1 = nn.LeakyReLU()
+        self.pool1 = nn.MaxPool2d(2, 2) # 64,64 -> 32,32
         # Block 2
         self.conv2 = nn.Conv2d(in_channels=32,
                                out_channels=64,
                                kernel_size=5,
                                padding=2)
         self.bn2 = nn.BatchNorm2d(64)
-        self.relu2 = nn.ReLU()
-        self.pool2 = nn.MaxPool2d(2, 2) # 48,48 -> 24,24 | 32,32 -> 16,16
+        self.relu2 = nn.LeakyReLU()
+        self.pool2 = nn.MaxPool2d(2, 2) # 32,32 -> 16,16
         # Block 3
         self.conv3 = nn.Conv2d(in_channels=64,
                                out_channels=128,
                                kernel_size=5,
                                padding=2)
         self.bn3 = nn.BatchNorm2d(128)
-        self.relu3 = nn.ReLU()
-        self.pool3 = nn.MaxPool2d(2, 2) # 24,24 -> 12,12 | 16,16 -> 8,8
+        self.relu3 = nn.LeakyReLU()
+        self.pool3 = nn.MaxPool2d(2, 2) # 16,16 -> 8,8
         # Block 4
         self.conv4 = nn.Conv2d(in_channels=128,
                                out_channels=256,
                                kernel_size=3,
                                padding=1)
         self.bn4 = nn.BatchNorm2d(256)
-        self.relu4 = nn.ReLU()
-        self.pool4 = nn.MaxPool2d(2, 2) # 12,12 -> 6,6 | 8,8 -> 4,4
+        self.relu4 = nn.LeakyReLU()
+        self.pool4 = nn.MaxPool2d(2, 2) # 8,8 -> 4,4
         # Classifier
         self.flatten = nn.Flatten()
-        self.fc1 = nn.Linear(256 * 4 * 4, 512)
-        self.relu5 = nn.ReLU()
-        self.dropout = nn.Dropout(0.4)
-        self.fc2 = nn.Linear(512, 34)
+        self.fc1 = nn.Linear(256 * 4 * 4, 256)
+        self.relu5 = nn.LeakyReLU()
+        self.dropout = nn.Dropout(0.55)
+        self.fc2 = nn.Linear(256, 34)
 
 
     def forward(self, x):
@@ -185,11 +184,6 @@ class CyrillicCNN(nn.Module):
 
         return x
     
-# img, label = cmd_train[500]
-# img = img.numpy().transpose(1, 2, 0)
-# plt.imshow(img)
-# plt.show()
-    
 model = CyrillicCNN().to(device)
 total_params = sum(p.numel() for p in model.parameters())
 print(device)
@@ -200,7 +194,7 @@ optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
-num_epochs = 40
+num_epochs = 25
 train_loss = []
 train_acc = []
 
@@ -238,21 +232,7 @@ if not model_path.exists():
     plt.subplot(122)
     plt.title("Acc")
     plt.plot(train_acc)
-    plt.savefig('train_1.png', dpi=300, bbox_inches='tight')
+    plt.savefig('train.png', dpi=300, bbox_inches='tight')
     plt.show()
 else:
     model.load_state_dict(torch.load(model_path))
-
-model.eval()
-it = iter(test_loader)
-images, labels = next(it)
-image = images[10].unsqueeze(0)
-image = image.to(device)
-
-with torch.no_grad():
-    output = model(image)
-    _, predicted = torch.max(output, 1)
-
-classes = cmd_test.classes
-print(f"True - {classes[labels[10]]}")
-print(f"Pred - {classes[predicted.cpu().item()]}")
