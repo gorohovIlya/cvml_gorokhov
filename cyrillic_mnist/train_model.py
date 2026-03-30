@@ -235,4 +235,5 @@ if not model_path.exists():
     plt.savefig('train.png', dpi=300, bbox_inches='tight')
     plt.show()
 else:
-    model.load_state_dict(torch.load(model_path))
+    model.load_state_dict(torch.load(model_path, 
+                                     map_location=torch.device(device)))
